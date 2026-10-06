@@ -173,7 +173,7 @@ function bindDrag(){
    const [r]=S.rows.splice(dragRow,1);S.rows.splice(to,0,r);flush();render();touch();toast('Строка перемещена')}})}
 
 /* ---------- Panel & tabs ---------- */
-const U=Object.assign({bg:'gray',theme:'dark',scale:100,splash:true},(()=>{try{return JSON.parse(localStorage[LS+'_u'])}catch{return{}}})());
+const U=Object.assign({bg:'gray',theme:'dark',scale:100,splash:true,autoVisual:false},(()=>{try{return JSON.parse(localStorage[LS+'_u'])}catch{return{}}})());
 const saveU=()=>{try{localStorage[LS+'_u']=JSON.stringify(U)}catch{}};
 const applyU=()=>{document.body.dataset.bg=U.bg;document.body.dataset.ui=U.theme;document.documentElement.style.setProperty('--ui',U.scale/100)};
 let tab='doc';
@@ -185,13 +185,14 @@ const inp=(L,i,f,v)=>f==='kind'?`<select data-l="${L}|${i}|kind" aria-label="Т�
  :`<input ${f==='w'?'type="number" class="w" min="3" max="100"':'spellcheck="true" lang="ru"'} data-l="${L}|${i}|${f}" value="${esc(v)}" aria-label="${f}">`;
 const listH=L=>(S[L]||[]).map((x,i)=>`<div class="lr" draggable="true" data-list="${L}" data-i="${i}"><button data-a="up" data-list="${L}" data-i="${i}" aria-label="Выше">▲</button><button data-a="dn" data-list="${L}" data-i="${i}" aria-label="Ниже">▼</button>${LST[L].map(f=>inp(L,i,f,x[f])).join('')}<button data-a="del" data-list="${L}" data-i="${i}" aria-label="Удалить">✕</button></div>`).join('')+`<button data-a="add" data-list="${L}">+ Добавить</button>`;
 const f=(l,k,t='text',x='')=>`<label>${l}</label><input data-b="${k}" type="${t}" ${x} ${t==='text'?'spellcheck="true" lang="ru"':''}>`;
-const sec=(t,b)=>`<section class="sec"><h4>${t}</h4>${b}</section>`;
+const tip=(text)=>`<button type="button" class="tip" data-tip="${esc(text)}" aria-label="Справка">?</button>`;
+const sec=(t,b,h='')=>`<section class="sec"><h4>${t}${h?tip(h):''}</h4>${b}</section>`;
 const opt=(arr,cur)=>arr.map(([v,n])=>`<option value="${v}"${v===cur?' selected':''}>${n}</option>`).join('');
 
 const PRESET_NAMES={oil:'Фритюрные масла',temp:'Температура оборудования',sanit:'Санитарный контроль',blank:'Пустой лист',receive:'Приёмка сырья',cook:'Тепловая обработка',clean:'Уборка и дезинфекция',pest:'Дезинсекция / дератизация',health:'Здоровье персонала'};
 
 function tabHTML(){const sheet=S.mode==='sheet';
- if(tab==='struct'){const lb=lib();return sec('Шаблоны',`<select id="tpl"><option value="">— выбрать шаблон —</option>${Object.keys(PRESETS).map(k=>`<option value="p:${k}">${PRESET_NAMES[k]||k}</option>`).join('')}${lb.map(t=>`<option value="u:${t.id}">${esc(t.name)}</option>`).join('')}</select><div class="row2" style="margin-top:8px"><button data-a="tsave">Сохранить как шаблон</button><button data-a="tdel">Удалить шаблон</button><button data-a="jin">Загрузить JSON</button><button data-a="jout">Скачать JSON</button></div>`)
+ if(tab==='struct'){const lb=lib();return sec('Шаблоны',`<select id="tpl"><option value="">— выбрать шаблон —</option>${Object.keys(PRESETS).map(k=>`<option value="p:${k}">${PRESET_NAMES[k]||k}</option>`).join('')}${lb.map(t=>`<option value="u:${t.id}">${esc(t.name)}</option>`).join('')}</select><div class="row2" style="margin-top:8px"><button data-a="tsave">Сохранить шаблон</button><button data-a="tdel">Удалить</button></div><div class="row2" style="margin-top:6px"><button data-a="jin">Импорт JSON</button><button data-a="jout">Экспорт JSON</button></div><p class="note">Импорт: шаблон документа или полная резервная копия.</p>`,'Готовые журналы ХАССП и ваши сохранённые шаблоны. Импорт JSON подгружает файл с диска.')
   +sec('Документ',f('Организация','org')+f('Заголовок','title')+f('Служебная строка','tag')+'<label>Реквизиты шапки</label>'+listH('meta'))
   +sec('Графы таблицы',listH('cols')+'<p class="note">Перетаскивайте графы на листе за заголовок. Правый клик — меню. «Номер» нумерует, «Название строки» — подписи, «Текст» — запись.</p>')
   +(sheet?sec('Строки таблицы',listH('rows'))+sec('Регламент под таблицей','<textarea data-b="limits" rows="4" spellcheck="true" lang="ru"></textarea>')
@@ -202,7 +203,9 @@ function tabHTML(){const sheet=S.mode==='sheet';
   +sec('Нормы граф',(S.cols.map((c,i)=>c.kind==='text'?`<div class="lr"><span class="nm">${esc(c.name)}</span><input class="w" type="number" step="any" placeholder="мин" data-l="cols|${i}|min" value="${c.min??''}"><input class="w" type="number" step="any" placeholder="макс" data-l="cols|${i}|max" value="${c.max??''}"></div>`:'').join('')||'<p class="note">Нет текстовых граф.</p>')+'<p class="note">Значения вне нормы подсвечиваются красным.</p>')
   +sec('Найти и заменить',`<input id="rf" placeholder="Найти" spellcheck="true" lang="ru"><input id="rt" placeholder="Заменить на" style="margin-top:6px" spellcheck="true" lang="ru"><button data-a="replace" style="margin-top:8px">Заменить везде</button>`)
   +sec('Очистка','<button data-a="clr">Очистить введённые данные</button>');
- if(tab==='check')return sec('Состояние','<div id="stats" class="stat"></div>')+sec('Замечания','<div id="aud"></div><button data-a="recalc">Пересчитать страницы</button>')+sec('Орфография','<button data-a="spell">Проверить онлайн (LanguageTool)</button><p class="note">Текст уходит на languagetool.org. Подчёркивание ошибок работает офлайн.</p>');
+ if(tab==='check')return sec('Состояние','<div id="stats" class="stat"></div>','Сводка: страницы, заполненность, значения вне нормы')
+  +sec('Замечания','<div id="aud"></div><button data-a="autofix" class="fix-btn">Исправить автоматически</button><button data-a="recalc" style="margin-top:6px;width:100%">Пересчитать страницы</button>','Кнопка «Исправить» нормализует ширины граф, добавляет недостающие типы и подгоняет страницы')
+  +sec('Орфография','<button data-a="spell">Проверить онлайн (LanguageTool)</button><p class="note">Текст уходит на languagetool.org. Подчёркивание ошибок работает офлайн.</p>');
  if(tab==='tools')return sec('Инструменты автора',`
   <div class="tools-grid">
    <a class="tool" href="https://smol0901-jpg.github.io/ph-metr/" target="_blank" rel="noopener">pH-CHECK PRO<br><small>Анализатор кислотности</small></a>
@@ -225,17 +228,19 @@ function tabHTML(){const sheet=S.mode==='sheet';
   <p class="note" style="margin-top:12px">Обратная связь, заказы доработок, внедрение на производстве — через Telegram.</p>`)
   +sec('Быстрые действия','<button data-a="backup">Полная резервная копия (БД)</button><button data-a="jin" style="margin-top:6px">Импорт JSON / шаблона</button>');
  if(tab==='more')return sec('Страница и печать',`<div class="row2"><div><label>Бумага</label><select data-b="paper">${opt([['A4','A4'],['A3','A3'],['A5','A5']],S.paper)}</select></div><div><label>Ориентация</label><select data-b="orient">${opt([['portrait','Книжная'],['landscape','Альбомная']],S.orient)}</select></div></div><div class="row2"><div>${f('Шрифт, pt','font','number','min=6 max=16 step=0.5')}</div><div>${f('Высота строки, мм','rowH','number','min=5 max=30')}</div></div>${f('Левое поле (прошивка), мм','mL','number','min=10 max=50')}<label class="chk"><input type="checkbox" data-b="demo"> Водяной знак «ОБРАЗЕЦ»</label>`)
-  +sec('Рабочая область',`<label>Фон</label><select data-u="bg">${opt([['gray','Серый'],['dark','Тёмный'],['light','Светлый'],['blue','Синий'],['grid','Клетка']],U.bg)}</select><label>Тема интерфейса</label><select data-u="theme">${opt([['dark','Тёмная'],['light','Светлая']],U.theme)}</select><label>Размер интерфейса: ${U.scale}%</label><input type="range" min="85" max="130" step="5" data-u="scale" value="${U.scale}"><label class="chk"><input type="checkbox" data-u="splash"${U.splash?' checked':''}> Показывать заставку при запуске</label>`)
+  +sec('Рабочая область',`<label>Фон</label><select data-u="bg">${opt([['gray','Серый'],['dark','Тёмный'],['light','Светлый'],['blue','Синий'],['grid','Клетка']],U.bg)}</select><label>Тема интерфейса</label><select data-u="theme">${opt([['dark','Тёмная'],['light','Светлая']],U.theme)}</select><label>Размер интерфейса: ${U.scale}%</label><input type="range" min="85" max="130" step="5" data-u="scale" value="${U.scale}"><label class="chk"><input type="checkbox" data-u="splash"${U.splash?' checked':''}> Показывать заставку при запуске</label><label class="chk"><input type="checkbox" data-u="autoVisual"${U.autoVisual?' checked':''}> Авто-улучшение визуала <span class="tip" data-tip="При включении подправляет отступы, высоты строк и ширины граф для аккуратной печати">?</span></label>`,'Фон холста, тема меню, масштаб интерфейса')
   +sec('Данные приложения','<div class="row2"><button data-a="backup">Резервная копия</button><button data-a="restore">Восстановить</button></div><button data-a="reset" style="margin-top:8px">Сбросить всё</button><p class="note">Всё хранится только в этом браузере / устройстве. Офлайн-режим полный.</p>')
-  +sec('О приложении',`<p class="note"><b>HACCP Studio Pro v9</b><br>NEURAL_ARCHITECT_PREMIUM++ · ASV_PROD<br>Ctrl+Z / Ctrl+Y — отмена, Ctrl+S — JSON, Ctrl+P — печать.<br>Перетаскивание граф и строк, правый клик — контекстное меню.<br>Установка: меню браузера → «Установить приложение».</p>
-  <button data-a="update" style="margin-top:8px">Проверить обновления</button>`);
+  +sec('О приложении',`<div class="about-brand"><img class="logo-nap" src="assets/logo-nap.jpg" alt="NEURAL ARCHITECT PREMIUM++"><img class="chef" src="assets/about-chef.jpg" alt="ASV_PROD · Цифровые экосистемы"></div>
+  <p class="note"><b>HACCP Studio Pro v9.1</b><br>NEURAL_ARCHITECT_PREMIUM++ · ASV_PROD<br>Смолянинов Александр Вячеславович<br><br>Ctrl+Z / Y — отмена, Ctrl+S — JSON, Ctrl+P — печать.<br>Перетаскивание граф/строк, ПКМ — меню.<br>Установка: меню браузера → «Установить».</p>
+  <div class="row2" style="margin-top:8px"><a class="btn" href="https://t.me/ASV_prod" target="_blank" rel="noopener">Telegram</a><a class="btn alt" href="https://vk.com/smolyaninovchef" target="_blank" rel="noopener">ВК</a></div>
+  <button data-a="update" style="margin-top:10px;width:100%">Проверить обновления</button>`);
  return ''}
 
 const P=$('#panel');
 function panel(){const st=P.scrollTop;if(tab==='doc'){P.innerHTML='';return}
  P.innerHTML=`<div class="sh"><span>${TITLES[tab]}</span><button data-a="close" aria-label="Закрыть">✕</button></div>`+tabHTML();
  $$('[data-b]',P).forEach(e=>{const v=S[e.dataset.b];e.type==='checkbox'?e.checked=!!v:e.value=v});P.scrollTop=st;audit()}
-function setTab(t){tab=(tab===t&&t!=='doc')?'doc':t;document.body.classList.toggle('open',tab!=='doc');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));P.scrollTop=0;panel();requestAnimationFrame(()=>{try{fit()}catch{}})}
+function setTab(t){tab=(tab===t&&t!=='doc')?'doc':t;if(tab==='doc')document.body.classList.remove('open');else document.body.classList.add('open');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));P.scrollTop=0;panel();requestAnimationFrame(()=>{try{fit()}catch{}})}
 $$('.nav [data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('.nav [data-act=exp]').onclick=()=>$('#dlg').showModal();
 $('#shade').onclick=()=>{if(tab!=='doc')setTab('doc')};
 function full(){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===S.mode));panel();render();updUndo()}
@@ -260,6 +265,7 @@ P.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return
  else if(a==='replace'){const n=replaceAll($('#rf').value,$('#rt').value);if(n){panel();render();touch()}return toast(n?`Заменено: ${n}`:'Совпадений нет')}
  else if(a==='clr'){if(confirm('Удалить все введённые значения в таблицах?')){S.cells={};render();touch();toast('Данные очищены')}return}
  else if(a==='recalc'){render();return toast('Страницы пересчитаны')}
+ else if(a==='autofix')return autoFix();
  else if(a==='spell')return spell();
  else if(a==='update')return checkUpdate(true);
  else if(a==='reset'){if(confirm('Удалить все шаблоны, настройки и текущий документ?')){Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k));location.reload()}return}
@@ -285,6 +291,28 @@ function dates(m){if(!m)return toast('Выберите месяц');const[y,mo]=
 function replaceAll(a,b){if(!a)return 0;const re=new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');let n=0;const r=s=>String(s).replace(re,()=>{n++;return b});
  ['org','title','tag','limits'].forEach(k=>S[k]=r(S[k]));S.meta.forEach(m=>{m.label=r(m.label);m.val=r(m.val)});S.rows.forEach(x=>x.label=r(x.label));S.cols.forEach(c=>c.name=r(c.name));S.sigs.forEach(s=>{s.role=r(s.role);s.name=r(s.name)});for(const k in S.cells)S.cells[k]=r(S.cells[k]);flush();return n}
 function backup(){flush();dl(new Blob([JSON.stringify({backup:1,v:9,state:S,lib:lib(),settings:U,ts:new Date().toISOString()},null,2)],{type:'application/json'}),'haccp-studio-backup-v9.json');toast('Полная резервная копия скачана')}
+
+
+function autoFix(){let n=0;
+  // normalize column widths to 100%
+  const sum=S.cols.reduce((a,c)=>a+(+c.w||0),0)||1;
+  if(Math.round(sum)!==100){S.cols.forEach(c=>{c.w=Math.max(3,Math.round((c.w/sum)*1000)/10)});
+    // fix rounding
+    const s2=S.cols.reduce((a,c)=>a+c.w,0);if(S.cols.length)S.cols[S.cols.length-1].w=Math.max(3,+(S.cols[S.cols.length-1].w+(100-s2)).toFixed(1));n++}
+  // ensure label column in sheet mode
+  if(S.mode==='sheet'&&!S.cols.some(c=>c.kind==='label')){const t=S.cols.find(c=>c.kind==='text');if(t){t.kind='label';n++}else{S.cols.splice(1,0,C('Параметр',40,'label'));n++}}
+  // ensure at least one signature
+  if(!S.sigs.length){S.sigs.push({role:'Ответственный',name:''});n++}
+  // fill empty org/title
+  if(!S.org.trim()){S.org='ООО «Название»';n++}
+  if(!S.title.trim()){S.title='ЖУРНАЛ КОНТРОЛЯ';n++}
+  // auto visual polish
+  if(U.autoVisual){if(S.font>12){S.font=10;n++}if(S.rowH>16){S.rowH=12;n++}if(S.mL<15){S.mL=20;n++}}
+  // reduce overflow: lower rowH slightly if pages over
+  flush();render();
+  const over=$$('.pg.over').length;
+  if(over){S.rowH=Math.max(7,S.rowH-1);S.font=Math.max(7,S.font-0.5);n++;flush();render()}
+  panel();touch();toast(n?`Исправлено замечаний: ${n}`:'Замечаний для авто-исправления нет')}
 
 function audit(){const out=[],w=S.cols.reduce((a,c)=>a+c.w,0);let over=0;
  $$('.pg').forEach((p,i)=>{const b=$('.bd',p),o=b.scrollHeight>b.clientHeight+1;p.classList.toggle('over',o);if(o){over++;out.push(`Страница ${i+1} не помещается на лист ${S.paper} — уменьшите шрифт или высоту строк`)}});
