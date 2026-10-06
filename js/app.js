@@ -176,7 +176,7 @@ function bindDrag(){
 const U=Object.assign({bg:'gray',theme:'dark',scale:100,splash:true},(()=>{try{return JSON.parse(localStorage[LS+'_u'])}catch{return{}}})());
 const saveU=()=>{try{localStorage[LS+'_u']=JSON.stringify(U)}catch{}};
 const applyU=()=>{document.body.dataset.bg=U.bg;document.body.dataset.ui=U.theme;document.documentElement.style.setProperty('--ui',U.scale/100)};
-let tab=innerWidth>900?'struct':'doc';
+let tab='doc';
 const TITLES={struct:'Структура документа',data:'Данные',check:'Проверка',tools:'Инструменты технолога',more:'Настройки'};
 const LST={meta:['label','val'],cols:['name','w','kind'],rows:['label'],sigs:['role','name']};
 const NEW={meta:()=>({label:'Реквизит',val:''}),cols:()=>C('Графа',15),rows:()=>({id:uid(),label:'Параметр'}),sigs:()=>({role:'Должность',name:''})};
@@ -235,9 +235,9 @@ const P=$('#panel');
 function panel(){const st=P.scrollTop;if(tab==='doc'){P.innerHTML='';return}
  P.innerHTML=`<div class="sh"><span>${TITLES[tab]}</span><button data-a="close" aria-label="Закрыть">✕</button></div>`+tabHTML();
  $$('[data-b]',P).forEach(e=>{const v=S[e.dataset.b];e.type==='checkbox'?e.checked=!!v:e.value=v});P.scrollTop=st;audit()}
-function setTab(t){tab=(tab===t&&t!=='doc')?'doc':t;document.body.classList.toggle('open',tab!=='doc');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));P.scrollTop=0;panel()}
+function setTab(t){tab=(tab===t&&t!=='doc')?'doc':t;document.body.classList.toggle('open',tab!=='doc');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));P.scrollTop=0;panel();requestAnimationFrame(()=>{try{fit()}catch{}})}
 $$('.nav [data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('.nav [data-act=exp]').onclick=()=>$('#dlg').showModal();
-$('#shade').onclick=()=>{if(tab!=='doc')setTab(tab)};
+$('#shade').onclick=()=>{if(tab!=='doc')setTab('doc')};
 function full(){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===S.mode));panel();render();updUndo()}
 
 P.addEventListener('input',e=>{const t=e.target;
@@ -358,7 +358,7 @@ async function checkUpdate(manual){
 
 addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase(),inField=e.target.closest?.('input,textarea,[contenteditable]');
  if(k==='s'){e.preventDefault();exp.json()}else if(k==='p'){e.preventDefault();exp.print()}else if(!inField&&k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(!inField&&k==='y'){e.preventDefault();redo()}});
-addEventListener('beforeunload',flush);addEventListener('resize',()=>{if(innerWidth<900&&zoom>1.2)fit()});
+addEventListener('beforeunload',flush);addEventListener('resize',()=>{clearTimeout(window.__rf);window.__rf=setTimeout(fit,120)});
 addEventListener('online',()=>{toast('Связь восстановлена');checkUpdate(false)});addEventListener('offline',()=>toast('Нет сети — работаем офлайн'));
 
 let ip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#bInstall').hidden=false});
@@ -369,7 +369,7 @@ if('serviceWorker'in navigator)addEventListener('load',()=>{const had=!!navigato
 
 const st=document.createElement('style');st.id='pgsz';document.head.append(st);
 try{S=norm(JSON.parse(localStorage[LS]))}catch{try{S=norm(JSON.parse(localStorage['haccp_studio_v6']||'null'))}catch{S=norm(PRESETS.oil())}}
-applyU();last=JSON.stringify(S);document.body.classList.toggle('open',tab!=='doc');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));full();let z=+localStorage[LS+'_z'];z?setZoom(z):fit();
+applyU();last=JSON.stringify(S);document.body.classList.remove('open');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));full();requestAnimationFrame(()=>{let z=+localStorage[LS+'_z'];if(z&&z>0.2&&z<3)setZoom(z);else fit();});
 
 stage.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.shiftKey||e.isComposing)return;const td=e.target.closest?.('td[contenteditable]');if(!td)return;e.preventDefault();
  const tr=td.parentElement,i=[...tr.children].indexOf(td),nt=tr.nextElementSibling?.children[i];if(nt?.isContentEditable){nt.focus();const r=document.createRange();r.selectNodeContents(nt);const s=getSelection();s.removeAllRanges();s.addRange(r)}});
