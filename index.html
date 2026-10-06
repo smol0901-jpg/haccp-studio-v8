@@ -1,50 +1,93 @@
-<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>HACCP Studio — конструктор журналов</title>
-<meta name="theme-color" content="#14211c"><meta name="description" content="Конструктор журналов и листов контроля ХАССП: печать A4, PDF, PNG, Excel, работа офлайн">
-<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icons/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<link rel="stylesheet" href="css/splash.css"><link rel="stylesheet" href="css/app.css"><link rel="preload" as="image" href="assets/brand.jpg"></head>
+<title>HACCP Studio Pro — конструктор журналов ХАССП</title>
+<meta name="theme-color" content="#0f1a16">
+<meta name="description" content="Профессиональный конструктор журналов и листов контроля ХАССП. Офлайн, печать A4/A3, PDF, Excel, drag-and-drop. NEURAL_ARCHITECT_PREMIUM++">
+<meta name="author" content="ASV_PROD · Смолянинов А.В.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="css/splash.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="preload" as="image" href="assets/brand.jpg">
+</head>
 <body data-bg="gray" data-ui="dark">
 <div id="splash" role="status" aria-label="Загрузка приложения">
-<div class="spl" id="sp1"><div class="bgb"></div><div class="fgi"></div></div>
-<div class="spl" id="sp2"><div class="bl"></div><div class="card"><img src="assets/ad.jpg" alt="Цифровые экосистемы для производства и HoReCa: разработка, внедрение, автоматизация, техподдержка" decoding="async"></div></div>
-<div class="spb"><b>HACCP Studio</b><div class="r"><span id="sps">Запуск ядра…</span><span id="spp">0%</span></div><div class="t"><i id="spf"></i></div></div>
+  <div class="spl" id="sp1"><div class="bgb"></div><div class="fgi"></div></div>
+  <div class="spl" id="sp2"><div class="bl"></div><div class="card"><img src="assets/ad.jpg" alt="Цифровые экосистемы для производства и HoReCa" decoding="async"></div></div>
+  <div class="spb"><b>HACCP Studio Pro</b><div class="r"><span id="sps">Запуск ядра…</span><span id="spp">0%</span></div><div class="t"><i id="spf"></i></div></div>
 </div>
 <script>
-(function(){var sp=document.getElementById('splash');if(!sp)return;var T=3000,u={},seen=false;
-try{u=JSON.parse(localStorage.getItem('haccp_studio_v6_u')||'{}')}catch(e){}
+(function(){var sp=document.getElementById('splash');if(!sp)return;var T=2800,u={},seen=false;
+try{u=JSON.parse(localStorage.getItem('haccp_studio_v9_u')||'{}')}catch(e){}
 try{seen=sessionStorage.getItem('hs_seen')==='1'}catch(e){}
 if(u.splash===false||seen){sp.parentNode.removeChild(sp);return}
 try{sessionStorage.setItem('hs_seen','1')}catch(e){}
 var f=document.getElementById('spf'),pc=document.getElementById('spp'),st=document.getElementById('sps'),t0=performance.now(),done=false,
-M=['Запуск ядра…','Загрузка модулей…','Подготовка шаблонов…','Проверка офлайн-режима…'];
-function hide(){if(done)return;done=true;sp.classList.add('out');setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp)},650)}
+M=['Запуск ядра…','Загрузка модулей…','Подготовка шаблонов…','Проверка обновлений…'];
+function hide(){if(done)return;done=true;sp.classList.add('out');setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp)},600)}
 function tick(now){var e=now-t0,p=Math.min(1,e/T),k=p<1?1-Math.pow(1-p,2.2):1,ready=!!window.__appReady;
-if(e>=T&&(ready||e>=6500)){f.style.width='100%';pc.textContent='100%';st.textContent=(navigator.serviceWorker&&navigator.serviceWorker.controller)?'Готово · офлайн-режим активен':'Готово';return hide()}
+if(e>=T&&(ready||e>=6000)){f.style.width='100%';pc.textContent='100%';st.textContent=(navigator.serviceWorker&&navigator.serviceWorker.controller)?'Готово · офлайн активен':'Готово';return hide()}
 f.style.width=(k*100).toFixed(1)+'%';pc.textContent=Math.min(99,Math.round(k*100))+'%';st.textContent=e>=T?'Почти готово…':M[Math.min(3,Math.floor(p*4))];requestAnimationFrame(tick)}
 requestAnimationFrame(tick)})();
 </script>
 
 <header class="bar">
-<b class="logo">HACCP Studio</b>
-<div class="seg" role="tablist"><button data-mode="sheet">Лист</button><button data-mode="journal">Журнал</button></div><span class="sp"></span>
-<button id="bUndo" class="ib" title="Отменить (Ctrl+Z)" aria-label="Отменить">↶</button><button id="bRedo" class="ib" title="Повторить (Ctrl+Y)" aria-label="Повторить">↷</button>
-<button id="zOut" class="ib" aria-label="Уменьшить">−</button><button id="zFit" class="ib" title="По ширине" aria-label="По ширине">⤢</button><button id="zIn" class="ib" aria-label="Увеличить">+</button>
-<span id="net" class="net" title="Состояние связи"><i>●</i><span>онлайн</span></span><button id="bInstall" class="btn alt" hidden>Установить</button>
+  <b class="logo" title="NEURAL_ARCHITECT_PREMIUM++">HACCP Studio Pro</b>
+  <div class="seg" role="tablist">
+    <button data-mode="sheet">Лист</button>
+    <button data-mode="journal">Журнал</button>
+  </div>
+  <span class="sp"></span>
+  <button id="bUndo" class="ib" title="Отменить (Ctrl+Z)" aria-label="Отменить">↶</button>
+  <button id="bRedo" class="ib" title="Повторить (Ctrl+Y)" aria-label="Повторить">↷</button>
+  <button id="zOut" class="ib" aria-label="Уменьшить">−</button>
+  <button id="zFit" class="ib" title="По ширине" aria-label="По ширине">⤢</button>
+  <button id="zIn" class="ib" aria-label="Увеличить">+</button>
+  <button id="bUpdate" class="ib" title="Проверить обновления" aria-label="Обновить">↻</button>
+  <span id="net" class="net" title="Состояние связи"><i>●</i><span>онлайн</span></span>
+  <button id="bInstall" class="btn alt" hidden>Установить</button>
 </header>
-<aside id="panel" aria-label="Панель"></aside><div id="shade"></div>
+
+<aside id="panel" aria-label="Панель"></aside>
+<div id="shade"></div>
 <main id="view"><div id="stage"></div></main>
+
 <nav class="nav" aria-label="Главное меню">
-<button data-t="doc"><i>📄</i>Документ</button>
-<button data-t="struct"><i>🧱</i>Структура</button>
-<button data-t="data"><i>✍️</i>Данные</button>
-<button data-t="check"><i>✅</i>Проверка<em id="nbadge" hidden>0</em></button>
-<button data-act="exp"><i>⬇️</i>Экспорт</button>
-<button data-t="more"><i>⚙️</i>Настройки</button>
+  <button data-t="doc"><span class="ni">Док</span></button>
+  <button data-t="struct"><span class="ni">Структура</span></button>
+  <button data-t="data"><span class="ni">Данные</span></button>
+  <button data-t="check"><span class="ni">Проверка</span><em id="nbadge" hidden>0</em></button>
+  <button data-act="exp"><span class="ni">Экспорт</span></button>
+  <button data-t="tools"><span class="ni">Технолог</span></button>
+  <button data-t="more"><span class="ni">Ещё</span></button>
 </nav>
-<dialog id="dlg"><h3>Экспорт и печать</h3><div class="grid">
-<button data-x="pdf">PDF</button><button data-x="png">PNG</button><button data-x="xlsx">Excel</button><button data-x="doc">Word</button><button data-x="json">Шаблон JSON</button><button data-x="print">Печать</button><button data-x="share">Поделиться PDF</button></div>
-<p class="note">PDF и PNG собираются в точный размер выбранной бумаги. Перед печатью устраните предупреждения во вкладке «Проверка».</p><button class="btn alt" data-x="close">Закрыть</button></dialog>
-<div id="toast" role="status"></div><div id="meas" aria-hidden="true"></div><input type="file" id="jf" accept=".json,application/json" hidden>
-<noscript>Для работы приложения нужен JavaScript.</noscript><script type="module" src="js/app.js"></script></body></html>
+
+<dialog id="dlg">
+  <h3>Экспорт и печать</h3>
+  <div class="grid">
+    <button data-x="pdf">PDF</button>
+    <button data-x="png">PNG</button>
+    <button data-x="xlsx">Excel</button>
+    <button data-x="doc">Word</button>
+    <button data-x="json">Шаблон JSON</button>
+    <button data-x="print">Печать</button>
+    <button data-x="share">Поделиться PDF</button>
+  </div>
+  <p class="note">PDF и PNG собираются в точный размер выбранной бумаги. Перед печатью устраните предупреждения во вкладке «Проверка».</p>
+  <button class="btn alt" data-x="close">Закрыть</button>
+</dialog>
+
+<div id="ctx" class="ctx" hidden role="menu"></div>
+<div id="toast" role="status"></div>
+<div id="meas" aria-hidden="true"></div>
+<input type="file" id="jf" accept=".json,application/json" hidden>
+<noscript>Для работы приложения нужен JavaScript.</noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
