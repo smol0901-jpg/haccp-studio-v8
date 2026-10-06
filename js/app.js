@@ -60,6 +60,31 @@ function norm(o){
   else if((m=k.match(/^cell_journal_(\d+)_(\d+)_(\d+)$/))&&s.cols[m[3]])cells[`${m[1]}|${m[2]}|${s.cols[m[3]].id}`]=v}
  s.cells=cells;s.v=9;return s}
 
+
+/* ---------- Реквизиты организации (глобальный профиль) ---------- */
+const ORG_KEY=LS+'_org';
+const defaultOrg=()=>({name:'ООО «Название»',inn:'',ogrn:'',legalAddr:'',factAddr:'',sameAddr:true,phone:'',email:'',haccpPlan:'',positions:[
+  {role:'Генеральный директор',name:''},
+  {role:'Заведующий производством',name:''},
+  {role:'Технолог',name:''},
+  {role:'Шеф-повар',name:''},
+  {role:'Ответственный за ХАССП',name:''}
+]});
+function loadOrg(){try{const o=JSON.parse(localStorage[ORG_KEY]||'null');if(o&&typeof o==='object'){const d=defaultOrg();return{...d,...o,positions:Array.isArray(o.positions)&&o.positions.length?o.positions.slice(0,30).map(p=>({role:String(p.role||'').slice(0,120),name:String(p.name||'').slice(0,120)})):d.positions}} }catch{}return defaultOrg()}
+function saveOrg(){try{localStorage[ORG_KEY]=JSON.stringify(ORG)}catch{toast('Не удалось сохранить реквизиты')}}
+let ORG=loadOrg();
+function applyOrgToDoc(partial){
+  if(ORG.name)S.org=ORG.name;
+  // meta: address
+  const addr=ORG.sameAddr||!ORG.factAddr?ORG.legalAddr:(ORG.legalAddr&&ORG.factAddr?`юр.: ${ORG.legalAddr}; факт.: ${ORG.factAddr}`:ORG.legalAddr||ORG.factAddr);
+  const ensureMeta=(label,val)=>{if(!val)return;let m=S.meta.find(x=>x.label.toLowerCase().includes(label.toLowerCase().slice(0,6)));if(m)m.val=val;else S.meta.push({label,val})};
+  if(addr)ensureMeta('Адрес',addr);
+  if(ORG.inn)ensureMeta('ИНН',ORG.inn);
+  if(ORG.haccpPlan)ensureMeta('План ХАССП',ORG.haccpPlan);
+  // signatures from positions with names
+  if(!partial){const named=ORG.positions.filter(p=>p.role);if(named.length){S.sigs=named.slice(0,8).map(p=>({role:p.role,name:p.name||''}))}}
+  flush();render();touch();toast('Реквизиты подставлены в документ')}
+
 let S,last,past=[],future=[],tm;
 const lib=()=>{try{return JSON.parse(localStorage[LS+'_lib']||'[]')}catch{return[]}};
 const toast=(m,ms=2600)=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms)};
@@ -177,7 +202,7 @@ const U=Object.assign({bg:'gray',theme:'dark',scale:100,splash:true,autoVisual:f
 const saveU=()=>{try{localStorage[LS+'_u']=JSON.stringify(U)}catch{}};
 const applyU=()=>{document.body.dataset.bg=U.bg;document.body.dataset.ui=U.theme;document.documentElement.style.setProperty('--ui',U.scale/100)};
 let tab='doc';
-const TITLES={struct:'Структура документа',data:'Данные',check:'Проверка',tools:'Инструменты технолога',more:'Настройки'};
+const TITLES={struct:'Структура документа',data:'Данные',check:'Проверка',org:'Реквизиты организации',tools:'Инструменты технолога',more:'Настройки'};
 const LST={meta:['label','val'],cols:['name','w','kind'],rows:['label'],sigs:['role','name']};
 const NEW={meta:()=>({label:'Реквизит',val:''}),cols:()=>C('Графа',15),rows:()=>({id:uid(),label:'Параметр'}),sigs:()=>({role:'Должность',name:''})};
 const KINDS={num:'Номер',label:'Название строки',text:'Текст'};
@@ -206,6 +231,19 @@ function tabHTML(){const sheet=S.mode==='sheet';
  if(tab==='check')return sec('Состояние','<div id="stats" class="stat"></div>','Сводка: страницы, заполненность, значения вне нормы')
   +sec('Замечания','<div id="aud"></div><button data-a="autofix" class="fix-btn">Исправить автоматически</button><button data-a="recalc" style="margin-top:6px;width:100%">Пересчитать страницы</button>','Кнопка «Исправить» нормализует ширины граф, добавляет недостающие типы и подгоняет страницы')
   +sec('Орфография','<button data-a="spell">Проверить онлайн (LanguageTool)</button><p class="note">Текст уходит на languagetool.org. Подчёркивание ошибок работает офлайн.</p>');
+ if(tab==='org'){return sec('Организация',`
+  <label>Наименование</label><input data-org="name" value="${esc(ORG.name)}" spellcheck="true" lang="ru">
+  <div class="row2"><div><label>ИНН</label><input data-org="inn" value="${esc(ORG.inn)}"></div><div><label>ОГРН</label><input data-org="ogrn" value="${esc(ORG.ogrn)}"></div></div>
+  <label>Юридический адрес</label><input data-org="legalAddr" value="${esc(ORG.legalAddr)}" spellcheck="true" lang="ru">
+  <label class="chk"><input type="checkbox" data-org="sameAddr"${ORG.sameAddr?' checked':''}> Фактический адрес совпадает с юридическим</label>
+  <div id="factWrap"${ORG.sameAddr?' hidden':''}><label>Фактический адрес</label><input data-org="factAddr" value="${esc(ORG.factAddr)}" spellcheck="true" lang="ru"></div>
+  <div class="row2"><div><label>Телефон</label><input data-org="phone" value="${esc(ORG.phone)}"></div><div><label>Email</label><input data-org="email" value="${esc(ORG.email)}"></div></div>
+  <label>План / программа ХАССП (номер, дата)</label><input data-org="haccpPlan" value="${esc(ORG.haccpPlan)}" spellcheck="true" lang="ru">
+  `,'Эти данные сохраняются на устройстве и подставляются в журналы')
+  +sec('Должности и ФИО',ORG.positions.map((p,i)=>`<div class="lr"><input data-org-pos="${i}|role" value="${esc(p.role)}" placeholder="Должность"><input data-org-pos="${i}|name" value="${esc(p.name)}" placeholder="ФИО"><button data-a="posdel" data-i="${i}" aria-label="Удалить">✕</button></div>`).join('')+`<button data-a="posadd">+ Добавить должность</button>`,'Подписи в журналах и листы согласования')
+  +sec('Действия',`<button data-a="orgapply" class="fix-btn">Подставить в текущий документ</button>
+  <button data-a="orgapply-soft" style="margin-top:6px;width:100%">Только название и адрес</button>
+  <p class="note">«Подставить» заполнит организацию, адрес, ИНН и блок подписей из списка должностей.</p>`)}
  if(tab==='tools')return sec('Инструменты автора',`
   <div class="tools-grid">
    <a class="tool" href="https://smol0901-jpg.github.io/ph-metr/" target="_blank" rel="noopener">pH-CHECK PRO<br><small>Анализатор кислотности</small></a>
@@ -229,6 +267,7 @@ function tabHTML(){const sheet=S.mode==='sheet';
   +sec('Быстрые действия','<button data-a="backup">Полная резервная копия (БД)</button><button data-a="jin" style="margin-top:6px">Импорт JSON / шаблона</button>');
  if(tab==='more')return sec('Страница и печать',`<div class="row2"><div><label>Бумага</label><select data-b="paper">${opt([['A4','A4'],['A3','A3'],['A5','A5']],S.paper)}</select></div><div><label>Ориентация</label><select data-b="orient">${opt([['portrait','Книжная'],['landscape','Альбомная']],S.orient)}</select></div></div><div class="row2"><div>${f('Шрифт, pt','font','number','min=6 max=16 step=0.5')}</div><div>${f('Высота строки, мм','rowH','number','min=5 max=30')}</div></div>${f('Левое поле (прошивка), мм','mL','number','min=10 max=50')}<label class="chk"><input type="checkbox" data-b="demo"> Водяной знак «ОБРАЗЕЦ»</label>`)
   +sec('Рабочая область',`<label>Фон</label><select data-u="bg">${opt([['gray','Серый'],['dark','Тёмный'],['light','Светлый'],['blue','Синий'],['grid','Клетка']],U.bg)}</select><label>Тема интерфейса</label><select data-u="theme">${opt([['dark','Тёмная'],['light','Светлая']],U.theme)}</select><label>Размер интерфейса: ${U.scale}%</label><input type="range" min="85" max="130" step="5" data-u="scale" value="${U.scale}"><label class="chk"><input type="checkbox" data-u="splash"${U.splash?' checked':''}> Показывать заставку при запуске</label><label class="chk"><input type="checkbox" data-u="autoVisual"${U.autoVisual?' checked':''}> Авто-улучшение визуала <span class="tip" data-tip="При включении подправляет отступы, высоты строк и ширины граф для аккуратной печати">?</span></label>`,'Фон холста, тема меню, масштаб интерфейса')
+  +sec('Разделы','<button data-a="gotools" style="width:100%">Инструменты технолога</button>')
   +sec('Данные приложения','<div class="row2"><button data-a="backup">Резервная копия</button><button data-a="restore">Восстановить</button></div><button data-a="reset" style="margin-top:8px">Сбросить всё</button><p class="note">Всё хранится только в этом браузере / устройстве. Офлайн-режим полный.</p>')
   +sec('О приложении',`<div class="about-brand"><img class="logo-nap" src="assets/logo-nap.jpg" alt="NEURAL ARCHITECT PREMIUM++"><img class="chef" src="assets/about-chef.jpg" alt="ASV_PROD · Цифровые экосистемы"></div>
   <p class="note"><b>HACCP Studio Pro v9.1</b><br>NEURAL_ARCHITECT_PREMIUM++ · ASV_PROD<br>Смолянинов Александр Вячеславович<br><br>Ctrl+Z / Y — отмена, Ctrl+S — JSON, Ctrl+P — печать.<br>Перетаскивание граф/строк, ПКМ — меню.<br>Установка: меню браузера → «Установить».</p>
@@ -248,8 +287,11 @@ function full(){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.m
 P.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.b){const k=t.dataset.b,n=['font','rowH','mL','pages','rpp'].includes(k);if(n&&t.value==='')return;S[k]=t.type==='checkbox'?t.checked:n?num(t.value,+t.min||1,+t.max||999,S[k]):t.value;render();touch()}
  else if(t.dataset.l){const[L,i,k]=t.dataset.l.split('|');S[L][i][k]=k==='w'?num(t.value,3,100,15):(k==='min'||k==='max')?(t.value===''?null:num(t.value,-1e6,1e6,null)):t.value;render();touch()}
- else if(t.dataset.u){U[t.dataset.u]=t.type==='checkbox'?t.checked:t.dataset.u==='scale'?+t.value:t.value;saveU();applyU();if(t.dataset.u==='scale')t.previousElementSibling.textContent=`Размер интерфейса: ${U.scale}%`}});
-const loadObj=o=>{if(o&&o.backup){if(Array.isArray(o.lib))localStorage[LS+'_lib']=JSON.stringify(o.lib.slice(0,200).filter(x=>x&&x.id&&x.state));if(o.settings)Object.assign(U,o.settings);saveU();applyU();flush();setState(norm(o.state),true);toast('Копия восстановлена')}else{flush();setState(norm(o),true);toast('Шаблон загружен')}};
+ else if(t.dataset.u){U[t.dataset.u]=t.type==='checkbox'?t.checked:t.dataset.u==='scale'?+t.value:t.value;saveU();applyU();if(t.dataset.u==='scale')t.previousElementSibling.textContent=`Размер интерфейса: ${U.scale}%`}
+ else if(t.dataset.org){const k=t.dataset.org;ORG[k]=t.type==='checkbox'?t.checked:t.value;if(k==='sameAddr'){const w=$('#factWrap');if(w)w.hidden=!!ORG.sameAddr}saveOrg()}
+ else if(t.dataset.orgPos){const[i,f]=t.dataset.orgPos.split('|');if(ORG.positions[i]){ORG.positions[i][f]=t.value;saveOrg()}}
+});
+const loadObj=o=>{if(o&&o.backup){if(Array.isArray(o.lib))localStorage[LS+'_lib']=JSON.stringify(o.lib.slice(0,200).filter(x=>x&&x.id&&x.state));if(o.settings)Object.assign(U,o.settings);saveU();applyU();if(o.org){ORG=Object.assign(defaultOrg(),o.org);saveOrg();}flush();setState(norm(o.state),true);toast('Копия восстановлена')}else{flush();setState(norm(o),true);toast('Шаблон загружен')}};
 P.addEventListener('change',e=>{const t=e.target;
  if(t.id==='tpl'&&t.value){const[a,k]=t.value.split(':');const s=a==='p'?PRESETS[k]():lib().find(x=>x.id===k)?.state;if(s){flush();setState(norm(s),true);toast('Шаблон загружен')}t.value=''}});
 $('#jf').addEventListener('change',e=>{const t=e.target;if(!t.files[0])return;const r=new FileReader();r.onload=()=>{try{loadObj(JSON.parse(r.result))}catch(x){toast('Ошибка: '+x.message)}};r.readAsText(t.files[0]);t.value=''});
@@ -266,6 +308,13 @@ P.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return
  else if(a==='clr'){if(confirm('Удалить все введённые значения в таблицах?')){S.cells={};render();touch();toast('Данные очищены')}return}
  else if(a==='recalc'){render();return toast('Страницы пересчитаны')}
  else if(a==='autofix')return autoFix();
+ else if(a==='posadd'){ORG.positions.push({role:'Должность',name:''});saveOrg();panel();return}
+ else if(a==='posdel'){ORG.positions.splice(+b.dataset.i,1);saveOrg();panel();return}
+ else if(a==='orgapply'){applyOrgToDoc(false);return}
+ else if(a==='orgapply-soft'){applyOrgToDoc(true);return}
+ else if(a==='selclear'){clearSelectedCells();return}
+ else if(a==='gotools'){setTab('tools');return}
+
  else if(a==='spell')return spell();
  else if(a==='update')return checkUpdate(true);
  else if(a==='reset'){if(confirm('Удалить все шаблоны, настройки и текущий документ?')){Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k));location.reload()}return}
@@ -290,7 +339,7 @@ function dates(m){if(!m)return toast('Выберите месяц');const[y,mo]=
  flush();render();touch();toast(`Проставлено дат: ${Math.min(days,S.pages*S.rpp)}`)}
 function replaceAll(a,b){if(!a)return 0;const re=new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');let n=0;const r=s=>String(s).replace(re,()=>{n++;return b});
  ['org','title','tag','limits'].forEach(k=>S[k]=r(S[k]));S.meta.forEach(m=>{m.label=r(m.label);m.val=r(m.val)});S.rows.forEach(x=>x.label=r(x.label));S.cols.forEach(c=>c.name=r(c.name));S.sigs.forEach(s=>{s.role=r(s.role);s.name=r(s.name)});for(const k in S.cells)S.cells[k]=r(S.cells[k]);flush();return n}
-function backup(){flush();dl(new Blob([JSON.stringify({backup:1,v:9,state:S,lib:lib(),settings:U,ts:new Date().toISOString()},null,2)],{type:'application/json'}),'haccp-studio-backup-v9.json');toast('Полная резервная копия скачана')}
+function backup(){flush();dl(new Blob([JSON.stringify({backup:1,v:9,state:S,lib:lib(),settings:U,org:ORG,ts:new Date().toISOString()},null,2)],{type:'application/json'}),'haccp-studio-backup-v9.json');toast('Полная резервная копия скачана')}
 
 
 function autoFix(){let n=0;
@@ -397,10 +446,112 @@ if('serviceWorker'in navigator)addEventListener('load',()=>{const had=!!navigato
 
 const st=document.createElement('style');st.id='pgsz';document.head.append(st);
 try{S=norm(JSON.parse(localStorage[LS]))}catch{try{S=norm(JSON.parse(localStorage['haccp_studio_v6']||'null'))}catch{S=norm(PRESETS.oil())}}
+ if(ORG.name&&(!S.org||S.org==='ООО «Название»'))S.org=ORG.name;
 applyU();last=JSON.stringify(S);document.body.classList.remove('open');$$('.nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));full();requestAnimationFrame(()=>{let z=+localStorage[LS+'_z'];if(z&&z>0.2&&z<3)setZoom(z);else fit();});
 
 stage.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.shiftKey||e.isComposing)return;const td=e.target.closest?.('td[contenteditable]');if(!td)return;e.preventDefault();
  const tr=td.parentElement,i=[...tr.children].indexOf(td),nt=tr.nextElementSibling?.children[i];if(nt?.isContentEditable){nt.focus();const r=document.createRange();r.selectNodeContents(nt);const s=getSelection();s.removeAllRanges();s.addRange(r)}});
 const netEl=$('#net'),updNet=()=>{const on=navigator.onLine;netEl.classList.toggle('off',!on);netEl.lastChild.textContent=on?'онлайн':'офлайн'};
 addEventListener('online',updNet);addEventListener('offline',updNet);updNet();
+
+/* ---------- Выделение ячеек, очистка, long-press, ресайз ---------- */
+const selected=new Set();
+function clearSelection(){selected.clear();$$('.sel',stage).forEach(el=>el.classList.remove('sel'))}
+function clearSelectedCells(){if(!selected.size){toast('Нет выделенных ячеек');return}
+  selected.forEach(k=>{if(k.startsWith('row:')){const i=+k.slice(4);if(S.rows[i])S.rows[i].label=''}else delete S.cells[k]});
+  clearSelection();flush();render();touch();toast('Очищено')}
+function selectCell(el,additive){const k=el.dataset.k||(el.dataset.row!=null?'row:'+el.dataset.row:null);if(!k)return;
+  if(!additive)clearSelection();
+  if(selected.has(k)){selected.delete(k);el.classList.remove('sel')}else{selected.add(k);el.classList.add('sel')}}
+
+stage.addEventListener('keydown',e=>{
+  if(e.key!=='Delete'&&e.key!=='Backspace')return;
+  const t=e.target;
+  if(t.isContentEditable&&(t.dataset.k||t.dataset.row!=null)){
+    const sel=getSelection();
+    if(sel&&!sel.isCollapsed&&t.contains(sel.anchorNode))return;
+  }
+  if(selected.size){e.preventDefault();clearSelectedCells();return}
+  if(t.isContentEditable&&(t.dataset.k||t.dataset.row!=null)){
+    e.preventDefault();
+    if(t.dataset.k){delete S.cells[t.dataset.k];t.textContent=''}
+    else if(t.dataset.row!=null){S.rows[t.dataset.row].label='';t.textContent=''}
+    t.classList.remove('bad');touch()}
+});
+
+stage.addEventListener('click',e=>{
+  const td=e.target.closest('td[data-k],td[data-row]');
+  if(!td)return;
+  if(e.ctrlKey||e.metaKey||e.shiftKey){e.preventDefault();selectCell(td,true)}
+});
+
+let lpTimer=null,lpTarget=null;
+stage.addEventListener('pointerdown',e=>{
+  const td=e.target.closest('td[data-k],td[data-row],td.l,th[data-col]');
+  if(!td)return;
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  lpTarget=td;
+  const cx=e.clientX,cy=e.clientY;
+  lpTimer=setTimeout(()=>{
+    lpTimer=null;
+    if(td.tagName==='TH'){
+      showCtx(cx,cy,[
+        {a:'col-left',t:'Вставить графу слева'},{a:'col-right',t:'Вставить графу справа'},'-',
+        {a:'col-del',t:'Удалить графу'},{a:'col-text',t:'Тип: Текст'},{a:'col-label',t:'Тип: Название строки'}
+      ]);ctx._col=+td.dataset.col;return}
+    selectCell(td,true);
+    showCtx(cx,cy,[
+      {a:'cell-clear',t:'Очистить ячейку'},{a:'selclear',t:'Очистить выделенные ('+selected.size+')'},'-',
+      {a:'row-add',t:'Добавить строку ниже'},{a:'row-del',t:'Удалить строку'}
+    ]);
+    const tr=td.closest('tr');ctx._row=tr?+tr.dataset.row:-1;ctx._cell=td;
+  },480)},{passive:true});
+['pointerup','pointercancel'].forEach(ev=>stage.addEventListener(ev,()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null}}));
+stage.addEventListener('pointermove',()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null}},{passive:true});
+
+let resizeCol=null,resizeStartX=0,resizeStartW=0;
+stage.addEventListener('pointerdown',e=>{
+  const th=e.target.closest('th[data-col]');
+  if(!th)return;
+  const r=th.getBoundingClientRect();
+  if(e.clientX<r.right-10)return;
+  e.preventDefault();e.stopPropagation();
+  resizeCol=+th.dataset.col;resizeStartX=e.clientX;resizeStartW=S.cols[resizeCol]?.w||15;
+  document.body.classList.add('resizing');
+});
+stage.addEventListener('pointermove',e=>{
+  if(resizeCol==null)return;
+  const dx=e.clientX-resizeStartX;
+  const deltaPct=dx*0.08;
+  S.cols[resizeCol].w=num(resizeStartW+deltaPct,3,80,15);
+  const sum=S.cols.reduce((a,c)=>a+c.w,0)||1;
+  $$('col',stage).forEach((c,i)=>{if(S.cols[i])c.style.width=(S.cols[i].w/sum*100).toFixed(2)+'%'});
+});
+stage.addEventListener('pointerup',()=>{
+  if(resizeCol==null)return;
+  resizeCol=null;document.body.classList.remove('resizing');flush();render();touch();
+});
+
+let resizeRow=false,resizeStartY=0,resizeStartH=0;
+stage.addEventListener('pointerdown',e=>{
+  const tr=e.target.closest('tr[data-row]');
+  if(!tr||e.target.closest('th'))return;
+  const r=tr.getBoundingClientRect();
+  if(e.clientY<r.bottom-8)return;
+  e.preventDefault();
+  resizeRow=true;resizeStartY=e.clientY;resizeStartH=S.rowH;
+  document.body.classList.add('resizing');
+});
+stage.addEventListener('pointermove',e=>{
+  if(!resizeRow)return;
+  const dy=e.clientY-resizeStartY;
+  const deltaMm=dy/(3.78*(zoom||1));
+  S.rowH=num(resizeStartH+deltaMm,5,30,12);
+  $$('tr[data-row]',stage).forEach(tr=>{tr.style.minHeight=S.rowH+'mm';tr.style.height=S.rowH+'mm'});
+});
+stage.addEventListener('pointerup',()=>{
+  if(!resizeRow)return;resizeRow=false;document.body.classList.remove('resizing');flush();render();touch();
+});
+
+
 window.__appReady=true;

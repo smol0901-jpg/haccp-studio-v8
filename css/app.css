@@ -137,3 +137,9 @@ a.btn.alt{background:transparent;color:var(--txt)}
 button{transition:border-color .15s,filter .15s,transform .1s}
 button:active{transform:scale(.97)}
 .pg{transition:outline-color .2s}
+
+td.sel,th.sel{outline:2px solid var(--acc);outline-offset:-2px;background:#2f9e6e33!important}
+body.resizing,body.resizing *{cursor:col-resize!important;user-select:none!important}
+th[data-col]{position:relative}
+th[data-col]::after{content:"";position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize}
+tr[data-row]{position:relative}
