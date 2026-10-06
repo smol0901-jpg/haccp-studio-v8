@@ -6,8 +6,8 @@ const base=()=>({v:9,mode:'sheet',orient:'portrait',paper:'A4',font:10,rowH:13,m
 const R=a=>a.map(label=>({id:uid(),label}));
 
 const PRESETS={
- oil:()=>({...base(),title:'ЖУРНАЛ МОНИТОРИНГА ККТ: ФРИТЮРНЫЕ МАСЛА',meta:[{label:'Предприятие/Филиал',val:'Цех №2'},{label:'Оборудование',val:'Фритюрница №4'},{label:'Период',val:''}],
-  cols:[C('№ п/п',8,'num'),C('Контролируемый параметр',50,'label'),C('Фактический показатель',24),C('Подпись',18)],
+ oil:()=>({...base(),font:9.5,rowH:11,title:'ЖУРНАЛ МОНИТОРИНГА ККТ: ФРИТЮРНЫЕ МАСЛА',meta:[{label:'Предприятие/Филиал',val:'Цех №2'},{label:'Оборудование',val:'Фритюрница №4'},{label:'Период',val:''}],
+  cols:[C('№ п/п',8,'num'),C('Контролируемый параметр',48,'label'),C('Фактический показатель',26),C('Подпись',18)],
   rows:R(['Объём масла на начало смены (л)','Температура фритюра перед жаркой (°C)','Органолептика (вкус, запах, цвет)','Добавлено свежего масла (л)','Слив отработанного масла (л)','Объём масла на конец смены (л)']),
   limits:'Критические пределы (ТР ТС 021/2011):\n1. Запрещено использовать масло с горьким вкусом или запахом гари.\n2. Предельный распад — не более 1% измененных триглицеридов.',sigs:[{role:'Дежурный повар',name:''},{role:'Технолог',name:''}]}),
  temp:()=>({...base(),mode:'journal',orient:'landscape',font:9,rowH:9,pages:3,rpp:12,title:'ЖУРНАЛ УЧЕТА ТЕМПЕРАТУРНОГО РЕЖИМА ХОЛОДИЛЬНОГО ОБОРУДОВАНИЯ',meta:[{label:'Цех',val:''},{label:'Оборудование',val:''}],
@@ -79,7 +79,7 @@ const ed=(a,v,c='')=>`<span contenteditable spellcheck="true" lang="ru" ${a} ${c
 
 function table(p,n,a=0){const sum=S.cols.reduce((a,c)=>a+c.w,0)||1,sheet=S.mode==='sheet';
  let h=`<table class="tb" style="font-size:${S.font}pt"><colgroup>${S.cols.map(c=>`<col style="width:${(c.w/sum*100).toFixed(2)}%">`).join('')}</colgroup><thead><tr>${S.cols.map((c,ci)=>`<th draggable="true" data-col="${ci}" data-ctx="col">${esc(c.name)}</th>`).join('')}</tr></thead><tbody>`;
- for(let i=a;i<a+n;i++){const row=sheet?S.rows[i]:null;h+=`<tr style="height:${S.rowH}mm" data-row="${sheet?i:''}" draggable="${sheet?'true':'false'}">`;
+ for(let i=a;i<a+n;i++){const row=sheet?S.rows[i]:null;h+=`<tr style="min-height:${S.rowH}mm;height:${S.rowH}mm" data-row="${sheet?i:''}" draggable="${sheet?'true':'false'}">`;
   for(const c of S.cols){const k=sheet?`${row.id}|${c.id}`:`${p}|${i}|${c.id}`;
    if(c.kind==='num')h+=`<td data-ctx="cell">${sheet?i+1:(p-1)*n+i+1}</td>`;
    else if(c.kind==='label'&&sheet)h+=`<td class="l" contenteditable spellcheck="true" lang="ru" data-row="${i}" data-ctx="rowlabel" draggable="true">${esc(row.label)}</td>`;
@@ -89,21 +89,28 @@ function table(p,n,a=0){const sum=S.cols.reduce((a,c)=>a+c.w,0)||1,sheet=S.mode=
 const sigs=()=>S.sigs.map((s,i)=>`<div class="sig">${ed(`data-sr="${i}"`,s.role)}<i>подпись</i><span>ФИО: ${ed(`data-sn="${i}"`,s.name)}</span></div>`).join('');
 const metaH=()=>`<div class="meta">${S.meta.map((m,i)=>`<div><b>${esc(m.label)}:</b>${ed(`data-m="${i}"`,m.val)}</div>`).join('')}</div>`;
 const meas=$('#meas');
-function fits(html){meas.innerHTML=pg(html);const b=$('.bd',meas);return b.scrollHeight<=b.clientHeight+1}
+function fits(html){meas.innerHTML=pg(html);const b=$('.bd',meas);if(!b)return false;return b.scrollHeight<=b.clientHeight+2}
 const hdrSheet=()=>`<div class="tag">${ed('data-f="tag"',S.tag)}</div><h2 class="ttl">${ed('data-f="title"',S.title)}</h2>${metaH()}`;
 
-function render(){const sy=view.scrollTop,sx=view.scrollLeft;let pages=[];
+function render(){const sy=view.scrollTop,sx=view.scrollLeft;let pages=[],afterBtn='';
  if(S.mode==='sheet'){const n=S.rows.length,tail=`<div class="lim">${ed('data-f="limits"',S.limits)}</div>`+sigs(),head=fst=>fst?hdrSheet():`<div class="tag">${esc(S.title)} (продолжение)</div>`;let a=0,first=true;
   for(let guard=0;guard<300;guard++){const rest=n-a;
-   if(rest<=0){pages.push(first?hdrSheet()+table(1,0,0)+tail:head(false)+tail);break}
+   if(rest<=0){if(first)pages.push(hdrSheet()+table(1,0,0)+tail);else if(pages.length){/* tail already needed on last */}else pages.push(head(false)+tail);break}
    const full=head(first)+table(1,rest,a)+tail;if(fits(full)){pages.push(full);break}
-   let lo=1,hi=rest;while(lo<hi){const m=(lo+hi+1)>>1;fits(head(first)+table(1,m,a))?lo=m:hi=m-1}
+   // Intermediate pages: leave room so last page can hold tail (limits+sigs)
+   let lo=1,hi=rest;while(lo<hi){const m=(lo+hi+1)>>1;fits(head(first)+table(1,m,a)+ (first?'':''))?lo=m:hi=m-1}
+   // Conservative: if only 1 row fits with content, still take it
+   if(lo<1)lo=1;
+   // If remaining after this page would be 0, attach tail now
+   if(a+lo>=n){pages.push(head(first)+table(1,lo,a)+tail);break}
    pages.push(head(first)+table(1,lo,a));a+=lo;first=false}
-  pages[pages.length-1]+='<button class="noprint addrow" data-a="addrow">+ строка</button>'}
+  afterBtn='<div class="noprint" style="text-align:center;margin-top:8px"><button class="addrow" data-a="addrow">+ строка</button></div>'}
  else{pages=[`<div class="cov"><b>${ed('data-f="org"',S.org)}</b><div><h2>${ed('data-f="title"',S.title)}</h2><p>Программа производственного контроля по принципам ХАССП</p></div><div style="text-align:left">Начат: «___» __________ 20__ г.<br>Окончен: «___» __________ 20__ г.</div></div>`,
   ...Array.from({length:S.pages},(_,i)=>`<div style="text-align:right;font-weight:700">Лист № ${i+1}</div>${metaH()}${table(i+1,S.rpp)}<p style="font-size:9.5pt;font-style:italic">Подпись контролирующего лица: ____________________</p>`),
-  `<div style="margin:auto;text-align:center;border:1px solid #000;padding:24px;width:140mm">В журнале пронумеровано, прошнуровано и скреплено печатью <b>${S.pages}</b> листов.<br><br>Руководитель: ___________ / _______________<br><br>М.П.<br><br>Дата сдачи в архив: «___» __________ 20__ г.</div><button class="noprint addrow" data-a="addpage">+ страница</button>`]}
- stage.innerHTML=pages.map(h=>pg(h)).join('');meas.innerHTML='';
+  `<div style="margin:auto;text-align:center;border:1px solid #000;padding:20px;width:140mm">В журнале пронумеровано, прошнуровано и скреплено печатью <b>${S.pages}</b> листов.<br><br>Руководитель: ___________ / _______________<br><br>М.П.<br><br>Дата сдачи в архив: «___» __________ 20__ г.</div>`];
+  afterBtn='<div class="noprint" style="text-align:center;margin-top:8px"><button class="addrow" data-a="addpage">+ страница</button></div>'
+ }
+ stage.innerHTML=pages.map(h=>pg(h)).join('')+(afterBtn||'');meas.innerHTML='';
  $('#pgsz').textContent=`@page{size:${S.paper} ${S.orient}}`;checksum();view.scrollTop=sy;view.scrollLeft=sx;requestAnimationFrame(audit);bindDrag()}
 
 async function checksum(){let c='';try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([S.org,S.title,S.cols,S.rows,S.cells,S.meta])));c=[...new Uint8Array(b)].slice(0,4).map(x=>x.toString(16).padStart(2,'0')).join('')}catch{}
@@ -264,7 +271,7 @@ stage.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)re
 
 let needRepag=false;
 stage.addEventListener('focusout',e=>{if(!e.relatedTarget&&needRepag){needRepag=false;render()}});
-function maxRows(){const[,H]=dim().map(Number),hdr=S.meta.length?16+Math.ceil(S.meta.length/2)*7:8;return Math.max(1,Math.floor((H-34-14-hdr-8)/S.rowH))}
+function maxRows(){const[,H]=dim().map(Number);const hdr=22+Math.ceil((S.meta.length||0)/2)*8;const tail=28+(S.sigs.length||1)*12;return Math.max(1,Math.floor((H-hdr-tail-20)/Math.max(S.rowH,8)))}
 function demo(){const g1=parseFloat($('#fmin')?.value),g2=parseFloat($('#fmax')?.value),skip=/подпис|откл|мер|оценк|метод|дат|качеств/i,cs=S.cols.filter(c=>c.kind==='text'&&!skip.test(c.name));let n=0;
  const fill=(k,c)=>{const a=c.min??g1,b=c.max??g2;if(!isFinite(a)||!isFinite(b)||b<a)return;S.cells[k]=(a+Math.random()*(b-a)).toFixed(1);n++};
  S.mode==='sheet'?S.rows.forEach(r=>cs.forEach(c=>fill(`${r.id}|${c.id}`,c))):[...Array(S.pages)].forEach((_,p)=>[...Array(S.rpp)].forEach((_,i)=>cs.forEach(c=>fill(`${p+1}|${i}|${c.id}`,c))));
